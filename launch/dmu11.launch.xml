@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="dmu11_config_path" default="$(find-pkg-share dmu11_ros2_driver)/config/dmu11.param.yaml"/>
+
+  <!-- DMU11 driver -->
+  <node pkg="dmu11_ros2_driver" exec="dmu11_driver_node" name="dmu11_ros2_driver" output="both">
+    <param from="$(var dmu11_config_path)"/>
+  </node>
+
+</launch>

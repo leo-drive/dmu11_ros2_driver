@@ -1,0 +1,12 @@
+/**:
+  ros__parameters:
+
+    working_frequency: 500 # working frequency of the driver
+    
+    serial_config:
+      port: "/dev/ttyUSB0" # current port name of the device
+
+    frame_config:
+      imu_frame: "imu_link" # IMU frame name
+
+      
