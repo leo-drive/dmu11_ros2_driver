@@ -33,6 +33,7 @@ namespace DMU11
         imu_pub_ = this->create_publisher<sensor_msgs::msg::Imu>("dmu11/Imu", 10);
         timer_ = this->create_wall_timer(std::chrono::milliseconds(1000 / working_frequency_), std::bind(&Dmu11Receiver::timer_callback, this));
         dmu11_raw_pub_ = this->create_publisher<dmu11_ros2_driver::msg::DmuRaw>("dmu11/dmu_raw", 100);
+        imu_pose_pub_ = this->create_publisher<geometry_msgs::msg::PoseStamped>("dmu11/pose", 10);
         RCLCPP_INFO(this->get_logger(), "DMU11 Receiver node initialized.");
     }
 
@@ -57,6 +58,21 @@ namespace DMU11
     {
         dmu11_raw_pub_->publish(dmu11_parser_ptr_->get_dmu_raw_data());
         imu_pub_->publish(dmu11_parser_ptr_->get_imu_data());
+        sensor_msgs::msg::Imu imu_orientation = dmu11_parser_ptr_->get_imu_data();
+        geometry_msgs::msg::PoseStamped pose_stamp_msg;
+        geometry_msgs::msg::Pose pose_msg;
+
+        pose_stamp_msg.header.stamp = imu_orientation.header.stamp;
+        pose_stamp_msg.header.frame_id = imu_orientation.header.frame_id;
+        pose_msg.position.x = 0.0;
+        pose_msg.position.y = 0.0;
+        pose_msg.position.z = 0.0;
+        pose_msg.orientation.x = imu_orientation.orientation.x;
+        pose_msg.orientation.y = imu_orientation.orientation.y;
+        pose_msg.orientation.z = imu_orientation.orientation.z;
+        pose_msg.orientation.w = imu_orientation.orientation.w;
+        pose_stamp_msg.pose = pose_msg;
+        imu_pose_pub_->publish(pose_stamp_msg);        
     }
 
 } // namespace DMU11

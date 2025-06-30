@@ -6,6 +6,9 @@
 #include "serial_port.h"
 #include "dmu11_parser.hpp"
 #include <dmu11_ros2_driver/msg/dmu_raw.hpp>
+#include <geometry_msgs/msg/pose.hpp>
+#include <geometry_msgs/msg/pose_stamped.hpp>
+
 
 namespace DMU11
 {
@@ -19,6 +22,7 @@ namespace DMU11
     private:
         rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr imu_pub_;
         rclcpp::Publisher<dmu11_ros2_driver::msg::DmuRaw>::SharedPtr dmu11_raw_pub_;
+        rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr imu_pose_pub_;
 
         std::string serial_port_;
         std::string frame_id_;

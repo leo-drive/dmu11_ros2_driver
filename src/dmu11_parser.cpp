@@ -69,6 +69,7 @@ namespace DMU11
         return static_cast<int16_t>(checksum); // Gerekirse signed dön
     }
 
+    double roll = 0, pitch = 0, yaw = 0;
     void Dmu11Parser::handle_byte(uint8_t byte)
     {
         sync_window.push_back(byte);
@@ -114,8 +115,8 @@ namespace DMU11
                     raw_dmu_data_.delta_theta.x = to_float_be(ptr + index, &index);
                     raw_dmu_data_.delta_velocity.x = to_float_be(ptr + index, &index);
 
-                    raw_dmu_data_.delta_velocity.y = to_float_be(ptr + index, &index);
                     raw_dmu_data_.delta_theta.y = to_float_be(ptr + index, &index);
+                    raw_dmu_data_.delta_velocity.y = to_float_be(ptr + index, &index);
 
                     raw_dmu_data_.delta_theta.z = to_float_be(ptr + index, &index);
                     raw_dmu_data_.delta_velocity.z = to_float_be(ptr + index, &index);
@@ -123,7 +124,6 @@ namespace DMU11
                     raw_dmu_data_.system_startup_flags = to_uint16_be(ptr + index, &index);
                     raw_dmu_data_.system_operat_flags = to_uint16_be(ptr + index, &index);
 
-                    double roll = 0, pitch = 0, yaw = 0;
                     roll += raw_dmu_data_.delta_theta.x * M_PI / 180;
                     pitch += raw_dmu_data_.delta_theta.y * M_PI / 180;
                     yaw += raw_dmu_data_.delta_theta.z * M_PI / 180;
@@ -136,6 +136,7 @@ namespace DMU11
                     imu_raw_.orientation.y = tf_quat.y();
                     imu_raw_.orientation.z = tf_quat.z();
                     imu_raw_.orientation.w = tf_quat.w();
+
                     // Call the callback function if set
                     if (callback_)
                     {
