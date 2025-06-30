@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <robot name="dmu11">
-  <link name="base_link">
+  <link name="imu_link">
     <visual>
     <origin  rpy="0 0 1.670" xyz="0 0 0" />
       <geometry>

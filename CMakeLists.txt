@@ -43,6 +43,17 @@ rclcpp_components_register_node(dmu11_driver
         EXECUTABLE dmu11_driver_node
 )
 
+install(DIRECTORY rviz
+  DESTINATION share/${PROJECT_NAME}
+)
+
+install(DIRECTORY meshes
+  DESTINATION share/${PROJECT_NAME}
+)
+
+install(DIRECTORY urdf
+  DESTINATION share/${PROJECT_NAME}
+)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

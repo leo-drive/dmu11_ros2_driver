@@ -2,9 +2,20 @@
 <launch>
   <arg name="dmu11_config_path" default="$(find-pkg-share dmu11_ros2_driver)/config/dmu11.param.yaml"/>
 
+  <arg name="rviz_config_path" default="$(find-pkg-share dmu11_ros2_driver)/rviz/dmu11_pose.rviz"/>
+
+  
   <!-- DMU11 driver -->
   <node pkg="dmu11_ros2_driver" exec="dmu11_driver_node" name="dmu11_ros2_driver" output="both">
     <param from="$(var dmu11_config_path)"/>
   </node>
+
+  <arg name="model_file" default="$(find-pkg-share dmu11_ros2_driver)/urdf/dmu11.urdf"/>
+
+  <node name="robot_state_publisher" pkg="robot_state_publisher" exec="robot_state_publisher" output="screen">
+    <param name="robot_description" value="$(command 'cat $(var model_file)' 'warn')"/>
+  </node>
+
+  <node pkg="rviz2" exec="rviz2" name="rviz2" output="screen" args="-d $(var rviz_config_path)" />
 
 </launch>
