@@ -8,6 +8,12 @@
 #include <dmu11_ros2_driver/msg/dmu_raw.hpp>
 #include <deque>
 #include <sensor_msgs/msg/imu.hpp>
+#include <geometry_msgs/msg/pose_stamped.hpp>
+#include <tf2_ros/transform_broadcaster.h>
+#include <geometry_msgs/msg/transform_stamped.hpp>
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2/LinearMath/Matrix3x3.h>
+#include <rclcpp/rclcpp.hpp>
 
 namespace DMU11
 {
@@ -24,8 +30,14 @@ namespace DMU11
         // Function to get the parsed data
         const dmu11_ros2_driver::msg::DmuRaw &get_dmu_raw_data() const { return raw_dmu_data_; }
         const sensor_msgs::msg::Imu &get_imu_data() const { return imu_raw_; }
+        const geometry_msgs::msg::PoseStamped  &get_imu_pose_data() const { return imu_pose_stamped_; }
+        const geometry_msgs::msg::TransformStamped &get_tf_data() const { return tf_transform_; }
+    
 
     private:
+        double roll_{};
+        double pitch_{}; 
+        double yaw_{};
         // Function to convert 4 bytes to a float in big-endian format
         static float to_float_be(const uint8_t *data, uint16_t *index = nullptr);
         // Function to convert 2 bytes to a uint16_t in big-endian format
@@ -37,14 +49,16 @@ namespace DMU11
         // Callback function to process parsed data
         std::function<void()> callback_;
         
-        void handle_byte(uint8_t byte);
+        void handle_packet(const uint8_t* packet);
 
-        static int16_t calculate_checksum(const std::deque<uint8_t> &packet);
+        static int16_t calculate_checksum(const uint8_t *packet);
 
         std::vector<uint8_t> current_packet_;
 
         dmu11_ros2_driver::msg::DmuRaw raw_dmu_data_;
         sensor_msgs::msg::Imu imu_raw_;
+        geometry_msgs::msg::PoseStamped imu_pose_stamped_;
+        geometry_msgs::msg::TransformStamped tf_transform_;
     };
 
 } // namespace DMU11

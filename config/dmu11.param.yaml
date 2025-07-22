@@ -1,7 +1,8 @@
 /**:
   ros__parameters:
 
-    working_frequency: 500 # working frequency of the driver
+    working_frequency: 200 # working frequency of the driver
+    publish_tf: false 
     
     serial_config:
       port: "/dev/ttyUSB0" # current port name of the device

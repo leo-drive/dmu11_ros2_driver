@@ -13,7 +13,7 @@
 namespace DMU11
 {
 
-    class Dmu11Receiver : public rclcpp::Node
+    class Dmu11Receiver : public rclcpp::Node, public std::enable_shared_from_this<Dmu11Receiver>
     {
     public:
         explicit Dmu11Receiver(const rclcpp::NodeOptions &options);
@@ -23,17 +23,19 @@ namespace DMU11
         rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr imu_pub_;
         rclcpp::Publisher<dmu11_ros2_driver::msg::DmuRaw>::SharedPtr dmu11_raw_pub_;
         rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr imu_pose_pub_;
+        std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
 
         std::string serial_port_;
         std::string frame_id_;
         int working_frequency_;
+        bool publish_tf_;
 
         void timer_callback();
 
         std::shared_ptr<SerialPort> serial_port_ptr_;
         std::shared_ptr<Dmu11Parser> dmu11_parser_ptr_;
-
         rclcpp::TimerBase::SharedPtr timer_;
+
 
         void new_frame_received();
     };

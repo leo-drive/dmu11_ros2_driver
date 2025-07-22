@@ -33,7 +33,7 @@ namespace DMU11
         float result;
         std::memcpy(&result, &temp, sizeof(float));
         if (index)
-            *index += 4; // Increment index by 4 bytes
+            *index += 4; 
         return result;
     }
 
@@ -45,119 +45,131 @@ namespace DMU11
         uint16_t result;
         std::memcpy(&result, &temp, sizeof(uint16_t));
         if (index)
-            *index += 2; // Increment index by 4 bytes
+            *index += 2; 
         return result;
     }
 
-    int16_t Dmu11Parser::calculate_checksum(const std::deque<uint8_t> &packet)
+    int16_t Dmu11Parser::calculate_checksum(const uint8_t *packet)
     {
         uint32_t sum = 0;
-
-        // 33 adet 16-bit word'ü big-endian olarak topla
         for (size_t i = 0; i < 66; i += 2)
         {
             uint16_t word = (static_cast<uint16_t>(packet[i]) << 8) | packet[i + 1];
             sum += word;
         }
 
-        // 16-bit ile sınırla
         sum &= 0xFFFF;
-
-        // Two's complement (negate)
         uint16_t checksum = (~sum + 1) & 0xFFFF;
-
-        return static_cast<int16_t>(checksum); // Gerekirse signed dön
+        return static_cast<int16_t>(checksum); 
     }
 
-    double roll = 0, pitch = 0, yaw = 0;
-    void Dmu11Parser::handle_byte(uint8_t byte)
+    void Dmu11Parser::handle_packet(const uint8_t* packet)
     {
-        sync_window.push_back(byte);
-        if (sync_window.size() == 68)
-        {
-            if (sync_window[0] == 0x55 && sync_window[1] == 0xAA)
-            {
-                // Check if the checksum matches the last two bytes of the packet(big endian)
-                int16_t received_checksum = (sync_window[66] << 8) | sync_window[67];
-                if (calculate_checksum(sync_window) == received_checksum)
-                {
-                    uint16_t index = 2;
-                    rclcpp::Clock clock(RCL_ROS_TIME);
-                    raw_dmu_data_.header.stamp = clock.now();
-                    raw_dmu_data_.header.frame_id = frame_id_;
+        uint16_t index = 2;
+        const uint8_t *ptr = packet;
 
-                    imu_raw_.header.stamp = clock.now();
-                    imu_raw_.header.frame_id = frame_id_;
+        raw_dmu_data_.msg_count = to_uint16_be(ptr + index, &index);
+        raw_dmu_data_.angular_rate.x = to_float_be(ptr + index, &index);
+        raw_dmu_data_.linear_acceleration.x = to_float_be(ptr + index, &index);
+        raw_dmu_data_.linear_acceleration.y = to_float_be(ptr + index, &index);
+        raw_dmu_data_.angular_rate.y = to_float_be(ptr + index, &index);
+        raw_dmu_data_.angular_rate.z = to_float_be(ptr + index, &index);
+        raw_dmu_data_.linear_acceleration.z = to_float_be(ptr + index, &index);
 
-                    uint8_t *ptr = &sync_window[0];
-                    raw_dmu_data_.msg_count = to_uint16_be(ptr + index, &index);
+        imu_raw_.linear_acceleration.x = raw_dmu_data_.linear_acceleration.x * gravity_constant;
+        imu_raw_.linear_acceleration.y = raw_dmu_data_.linear_acceleration.y * gravity_constant;
+        imu_raw_.linear_acceleration.z = raw_dmu_data_.linear_acceleration.z * gravity_constant;
 
-                    raw_dmu_data_.angular_rate.x = to_float_be(ptr + index, &index);
-                    raw_dmu_data_.linear_acceleration.x = to_float_be(ptr + index, &index);
+        imu_raw_.angular_velocity.x = raw_dmu_data_.angular_rate.x * M_PI / 180;
+        imu_raw_.angular_velocity.y = raw_dmu_data_.angular_rate.y * M_PI / 180;
+        imu_raw_.angular_velocity.z = raw_dmu_data_.angular_rate.z * M_PI / 180;
 
-                    raw_dmu_data_.linear_acceleration.y = to_float_be(ptr + index, &index);
-                    raw_dmu_data_.angular_rate.y = to_float_be(ptr + index, &index);
+        index += 4; // Reserved
+        raw_dmu_data_.average_imu_temp = to_float_be(ptr + index, &index);
 
-                    raw_dmu_data_.angular_rate.z = to_float_be(ptr + index, &index);
-                    raw_dmu_data_.linear_acceleration.z = to_float_be(ptr + index, &index);
+        raw_dmu_data_.delta_theta.x = to_float_be(ptr + index, &index);
+        raw_dmu_data_.delta_velocity.x = to_float_be(ptr + index, &index);
+        raw_dmu_data_.delta_theta.y = to_float_be(ptr + index, &index);
+        raw_dmu_data_.delta_velocity.y = to_float_be(ptr + index, &index);
+        raw_dmu_data_.delta_theta.z = to_float_be(ptr + index, &index);
+        raw_dmu_data_.delta_velocity.z = to_float_be(ptr + index, &index);
 
-                    imu_raw_.linear_acceleration.x = raw_dmu_data_.linear_acceleration.x * gravity_constant; // We multiply by g_ to convert from g's into m/s^2
-                    imu_raw_.linear_acceleration.y = raw_dmu_data_.linear_acceleration.y * gravity_constant;
-                    imu_raw_.linear_acceleration.z = raw_dmu_data_.linear_acceleration.z * gravity_constant;
+        raw_dmu_data_.system_startup_flags = to_uint16_be(ptr + index, &index);
+        raw_dmu_data_.system_operat_flags = to_uint16_be(ptr + index, &index);
 
-                    imu_raw_.angular_velocity.x = raw_dmu_data_.angular_rate.x * M_PI / 180; //Convert to rad/s
-                    imu_raw_.angular_velocity.y = raw_dmu_data_.angular_rate.y * M_PI / 180;
-                    imu_raw_.angular_velocity.z = raw_dmu_data_.angular_rate.z * M_PI / 180;
+        roll_ += raw_dmu_data_.delta_theta.x * M_PI / 180;
+        pitch_ += raw_dmu_data_.delta_theta.y * M_PI / 180;
+        yaw_ += raw_dmu_data_.delta_theta.z * M_PI / 180;
 
-                    index += 4; // Skip the next 4 bytes (reserved for future use)
-                    raw_dmu_data_.average_imu_temp = to_float_be(ptr + index, &index);
+        tf2::Quaternion tf_quat;
+        tf_quat.setRPY(roll_, pitch_, yaw_);
 
-                    raw_dmu_data_.delta_theta.x = to_float_be(ptr + index, &index);
-                    raw_dmu_data_.delta_velocity.x = to_float_be(ptr + index, &index);
+        imu_raw_.orientation.x = tf_quat.x();
+        imu_raw_.orientation.y = tf_quat.y();
+        imu_raw_.orientation.z = tf_quat.z();
+        imu_raw_.orientation.w = tf_quat.w();
 
-                    raw_dmu_data_.delta_theta.y = to_float_be(ptr + index, &index);
-                    raw_dmu_data_.delta_velocity.y = to_float_be(ptr + index, &index);
+        rclcpp::Clock clock(RCL_ROS_TIME);
+        raw_dmu_data_.header.stamp = clock.now();
+        raw_dmu_data_.header.frame_id = frame_id_;
+        imu_raw_.header.stamp = raw_dmu_data_.header.stamp;
+        imu_raw_.header.frame_id = frame_id_;
 
-                    raw_dmu_data_.delta_theta.z = to_float_be(ptr + index, &index);
-                    raw_dmu_data_.delta_velocity.z = to_float_be(ptr + index, &index);
+        geometry_msgs::msg::Pose pose_msg;
 
-                    raw_dmu_data_.system_startup_flags = to_uint16_be(ptr + index, &index);
-                    raw_dmu_data_.system_operat_flags = to_uint16_be(ptr + index, &index);
+        imu_pose_stamped_.header.stamp = clock.now();
+        imu_pose_stamped_.header.frame_id = frame_id_;
+        pose_msg.position.x = 0.0;
+        pose_msg.position.y = 0.0;
+        pose_msg.position.z = 0.0;
+        pose_msg.orientation.x = imu_raw_.orientation.x;
+        pose_msg.orientation.y = imu_raw_.orientation.y;
+        pose_msg.orientation.z = imu_raw_.orientation.z;
+        pose_msg.orientation.w = imu_raw_.orientation.w;
+        imu_pose_stamped_.pose = pose_msg;
 
-                    roll += raw_dmu_data_.delta_theta.x * M_PI / 180;
-                    pitch += raw_dmu_data_.delta_theta.y * M_PI / 180;
-                    yaw += raw_dmu_data_.delta_theta.z * M_PI / 180;
+        tf_transform_.header.stamp = clock.now();  // ROS zaman damgası
+        tf_transform_.header.frame_id = "world";                    // Üst frame (parent)
+        tf_transform_.child_frame_id = "imu";                       // Alt frame (child)
 
-                    // tf2 quaternion oluştur
-                    tf2::Quaternion tf_quat;
-                    tf_quat.setRPY(roll, pitch, yaw);
-                
-                    imu_raw_.orientation.x = tf_quat.x();
-                    imu_raw_.orientation.y = tf_quat.y();
-                    imu_raw_.orientation.z = tf_quat.z();
-                    imu_raw_.orientation.w = tf_quat.w();
+        tf_transform_.transform.translation.x = 0.0;
+        tf_transform_.transform.translation.y = 0.0;
+        tf_transform_.transform.translation.z = 0.0;
 
-                    // Call the callback function if set
-                    if (callback_)
-                    {
-                        callback_();
-                    }
-                }
+        tf_transform_.transform.rotation.x = tf_quat.x();
+        tf_transform_.transform.rotation.y = tf_quat.y();
+        tf_transform_.transform.rotation.z = tf_quat.z();
+        tf_transform_.transform.rotation.w = tf_quat.w();
 
-                sync_window.clear();
-            }
-            else
-            {
-                sync_window.pop_front();
-            }
-        }
+
+        if (callback_)
+            callback_();
     }
+
 
     void Dmu11Parser::parse_data(const uint8_t *buffer, size_t size)
     {
-        for (size_t i = 0; i < size; ++i)
+        static std::vector<uint8_t> internal_buffer;
+        internal_buffer.insert(internal_buffer.end(), buffer, buffer + size);
+        while (internal_buffer.size() >= 68)
         {
-            handle_byte(buffer[i]);
+            if (internal_buffer[0] == 0x55 && internal_buffer[1] == 0xAA)
+            {
+                int16_t received_checksum = (internal_buffer[66] << 8) | internal_buffer[67];
+                if (calculate_checksum(internal_buffer.data()) == received_checksum)
+                {
+                    handle_packet(internal_buffer.data());  // Yeni fonksiyon
+                    internal_buffer.erase(internal_buffer.begin(), internal_buffer.begin() + 68);
+                }
+                else
+                {
+                    internal_buffer.erase(internal_buffer.begin());
+                }
+            }
+            else
+            {
+                internal_buffer.erase(internal_buffer.begin());
+            }
         }
     }
 
