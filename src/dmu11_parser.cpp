@@ -71,8 +71,8 @@ namespace DMU11
         raw_dmu_data_.msg_count = to_uint16_be(ptr + index, &index);
         raw_dmu_data_.angular_rate.x = to_float_be(ptr + index, &index);
         raw_dmu_data_.linear_acceleration.x = to_float_be(ptr + index, &index);
-        raw_dmu_data_.linear_acceleration.y = to_float_be(ptr + index, &index);
         raw_dmu_data_.angular_rate.y = to_float_be(ptr + index, &index);
+        raw_dmu_data_.linear_acceleration.y = to_float_be(ptr + index, &index);
         raw_dmu_data_.angular_rate.z = to_float_be(ptr + index, &index);
         raw_dmu_data_.linear_acceleration.z = to_float_be(ptr + index, &index);
 
